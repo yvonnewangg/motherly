@@ -2,3 +2,8 @@ streamlit
 pandas
 numpy
 matplotlib
+flask
+flask_sqlalchemy
+werkzeug
+datetime
+jwt

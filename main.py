@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import datetime
-import matplotlib.pyplot as plt
 
 # Sample data for trend analysis
 sample_data = {
@@ -21,9 +20,9 @@ df = pd.DataFrame(sample_data)
 
 # Sidebar Navigation
 st.sidebar.title("Postpartum Health App")
-app_mode = st.sidebar.selectbox("Navigate", ["Home", "Weekly Screening", "Trends", "User Profile", "Chat", "Physician's Page"])
+app_mode = st.sidebar.selectbox("Navigate", ["Home", "Trends", "User Profile", "Chat", "Physician's Page"])
 
-# Home Page (Log input)
+# Home Page (Log input and Weekly Screening)
 if app_mode == "Home":
     st.title("Postpartum Health Tracker")
     
@@ -69,7 +68,7 @@ if app_mode == "Home":
         st.markdown(
             """
             <div style='background-color: #f0f0f0; padding: 10px; border-radius: 10px;'>
-                <h4 style='margin: 0;'>Log your symptoms</h4>
+                <h4 style='color: #FF69B4; style: 'margin: 0;'>Log your symptoms</h4>
                 <h1 style='color: #FF69B4; font-size: 48px; margin: 0;'>+</h1>
             </div>
             """,
@@ -142,23 +141,8 @@ if app_mode == "Home":
         if st.button("Log Today's Data"):
             st.success("Your data has been logged for today!")
 
-    # Navigation bar
-    st.markdown(
-        """
-        <div style='position: fixed; bottom: 0; left: 0; right: 0; background-color: white; padding: 10px; display: flex; justify-content: space-around;'>
-            <div>📅 Today</div>
-            <div>📊 Insights</div>
-            <div>📝 Screening</div>
-            <div>💬 Chat</div>
-            <div>👤 Profile</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-# Weekly Screening Page
-elif app_mode == "Weekly Screening":
-    st.title("Weekly Screening")
+    # Weekly Screening
+    st.markdown("### Weekly Screening")
     st.subheader("Edinburgh Postnatal Depression Scale (EPDS)")
 
     # EPDS Test
@@ -179,7 +163,7 @@ elif app_mode == "Weekly Screening":
         ["As much as I always could", "Not quite so much now", "Definitely not so much now", "Not at all"],
         ["As much as I ever did", "Rather less than I used to", "Definitely less than I used to", "Hardly at all"],
         ["Yes, most of the time", "Yes, some of the time", "Not very often", "No, never"],
-        ["No, not at all", "Hardly ever", "Yes, sometimes", "Yes, very often"],
+        ["Yes, very often", "Yes, sometimes", "Hardly ever", "No, not at all"],
         ["Yes, quite a lot", "Yes, sometimes", "No, not much", "No, not at all"],
         ["Yes, most of the time I haven't been able to cope at all", "Yes, sometimes I haven't been coping as well as usual", "No, most of the time I have coped quite well", "No, I have been coping as well as ever"],
         ["Yes, most of the time", "Yes, sometimes", "Not very often", "No, not at all"],
@@ -205,6 +189,84 @@ elif app_mode == "Weekly Screening":
         st.warning("Your score indicates a possible risk for postpartum depression. Consider discussing this with your healthcare provider.")
     else:
         st.error("Your score indicates a high risk for postpartum depression. We strongly recommend contacting your healthcare provider for further evaluation and support.")
+
+    # Calculate Risk Logic
+    st.header("Risk Score Analyzer")
+
+    # Define the weights for each factor
+    weights = {
+        "mental_health": 0.25,
+        "stress": 0.15,
+        "social_support": 0.20,
+        "physical_health": 0.10,
+        "nutrition": 0.10,
+        "sleep_quality": 0.10,
+        "economic_stress": 0.05,
+        "hormonal_changes": 0.05
+    }
+
+    # Function to calculate weighted score
+    def calculate_weighted_score(responses, weights):
+        total_score = 0
+        for factor, score in responses.items():
+            total_score += score * weights[factor]
+        return total_score
+
+    # Aggregate responses for calculation
+    responses = {
+        "mental_health": {"Need support": 10, "Some struggles": 6, "Feeling good": 3}[mental_health],
+        "stress": {"Low stress": 3, "Moderate stress": 6, "High stress": 10}[stress],
+        "social_support": (6 - social_support) * 2,  # Invert scale to reflect lack of support as higher risk
+        "physical_health": {"Need to see a doctor": 10, "Some concerns": 6, "Feeling healthy": 3}[physical_health],
+        "nutrition": (6 - nutrition) * 2,  # Invert scale to reflect poor nutrition as higher risk
+        "sleep_quality": (6 - sleep_quality) * 2,  # Invert scale for poor sleep quality as higher risk
+        "economic_stress": economic_stress * 2,  # Direct score for economic stress
+        "hormonal_changes": {"No": 3, "Yes": 10}[hormonal_changes]
+    }
+
+    # Calculate overall risk score based on the weighted factors
+    weighted_risk_score = calculate_weighted_score(responses, weights)
+
+    # Final risk score adjustment by combining EPDS score and weighted risk score
+    total_risk_score = epds_score + weighted_risk_score
+
+    # Display personalized risk score
+    st.subheader("Your Personalized Risk Score")
+    st.write(f"EPDS Score: {epds_score}")
+    st.write(f"Weighted Risk Score (from daily check-in factors): {weighted_risk_score:.2f}")
+    st.write(f"Total Risk Score: {total_risk_score:.2f}")
+
+        # Explanation of Risk Scores
+    st.markdown("""
+    ### Understanding Your Risk Scores
+
+    - **EPDS Score**: This score is derived from the Edinburgh Postnatal Depression Scale, which assesses the risk of postpartum depression.
+        - **0-9**: Low risk for postpartum depression
+        - **10-12**: Possible risk; consider discussing this with your healthcare provider
+        - **13 or higher**: High risk; strong recommendation to contact your healthcare provider for further evaluation
+
+    - **Personalized Risk Score**: Your total risk score combines your EPDS score and your daily logged answers, providing a comprehensive view of your well-being. The maximum possible score is **40**. 
+
+        - **0-10**: Low overall risk; generally managing well
+        - **11-20**: Moderate risk; some areas may need attention
+        - **21-30**: High risk; consider reaching out for additional support
+        - **31-40**: Very high risk; immediate professional assistance is advised
+
+    This personalized score helps you and your healthcare provider identify areas where you may need extra support and track your mental health over time.
+    """)
+
+    # Display personalized risk score
+    st.subheader("Your Personalized Risk Score")
+    
+    # Interpretation of the risk score based on thresholds
+    if total_risk_score <= 6:
+        st.success("Low risk for postpartum depression.")
+    elif 7 <= total_risk_score <= 13:
+        st.warning("Mild risk for postpartum depression. Consider consulting a physician.")
+    elif 14 <= total_risk_score <= 19:
+        st.warning("Moderate risk for postpartum depression. Professional support is advised.")
+    else:
+        st.error("High risk for postpartum depression. Seek immediate medical attention.")
 
 # Trend Page
 elif app_mode == "Trends":
